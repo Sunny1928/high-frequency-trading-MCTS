@@ -7,10 +7,20 @@ class MCTS:
     "Monte Carlo tree searcher. First rollout the tree then choose a move."
 
     def __init__(self, exploration_weight=1):
-        self.Q = defaultdict(int) # reward of each node
-        self.N = defaultdict(int) # count for each node
-        self.P = defaultdict(float) # probility for each node
+
+        # reward of each node
+        self.Q = defaultdict(int) 
+        
+        # count for each node
+        self.N = defaultdict(int)
+
+        # probility for each node
+        self.P = defaultdict(float) 
+
+        # children of each node
         self.children = dict()
+
+        # exploration_weight
         self.exploration_weight = exploration_weight
 
     def uct(self, n):
@@ -18,6 +28,7 @@ class MCTS:
         return self.Q[n] / self.N[n] + self.exploration_weight*(self.P[n]/self.N[n])
 
     def choose(self, node):
+
         if node.is_terminal():
             raise RuntimeError(f"choose called on terminal node {node}")
         
@@ -26,14 +37,18 @@ class MCTS:
                 return float("-inf") # the most min value
             return self.Q[n] / self.N[n] # avg
         
+        # choose the node having max score 
         return max(self.children[node], key = score)
     
     def policy_network(self, node):
         xgb_model = xgb.XGBClassifier()
         test = [[node.bidask[1]]+list(node.bidask[7:12])+list(node.bidask[17:23])]
 
+        # buy
         if node.buy_or_sell == 0:
             weight_path = "./model_weight/bid_using.model"
+
+        # sell
         elif node.buy_or_sell == 1:
             weight_path = "./model_weight/ask_using.model"
             
@@ -56,11 +71,11 @@ class MCTS:
         path=[]
         while True:
             path.append(node)
-            # print(node)
             if node not in self.children or not self.children[node]:
                 # node is either unexplored or terminal
                 return path
             
+            # select unexplored node
             unexplored = self.children[node] - self.children.keys()
             if unexplored:
                 n = unexplored.pop()
@@ -69,13 +84,12 @@ class MCTS:
             node = self._uct_select(node)
 
     def _uct_select(self, node):
-        # P: policy network probability
         "Select a child of node, balancing exploration & exploitation"
 
         # All children of node should already be expended
         assert all(n in self.children for n in self.children[node])
             
-
+        # find node have max uct
         return max(self.children[node], key=self.uct)
 
     def _expend(self, node):
@@ -87,6 +101,8 @@ class MCTS:
         
         # policy_network = [0.7, 0.3]
         policy_network = self.policy_network(node)
+
+        # update happening probility of nodes
         for n, p in zip(self.children[node], policy_network):
             self.P[n] = p
 
@@ -96,6 +112,8 @@ class MCTS:
             if node.is_terminal():
                 reward = node.reward()
                 return reward
+            
+            # randomly choose a node
             node = node.find_random_child()
 
     def _backpropagate(self, path, reward):
@@ -103,9 +121,9 @@ class MCTS:
         for node in reversed(path):
             self.N[node] += 1
             self.Q[node] += reward
-
     
 
+    # for _print_tree_children to print MCTS tree
     def recursive(self, k, level=0):
         strin = " "
         if k in self.children:
@@ -128,7 +146,7 @@ class MCTS:
 
 
 
-
+# using abstractmethod to 繼承 node
 class Node(ABC):
 
     @abstractmethod
