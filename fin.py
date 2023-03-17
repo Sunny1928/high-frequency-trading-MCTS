@@ -1,44 +1,64 @@
 from collections import namedtuple, defaultdict
 import random
 from mcts import MCTS, Node
+import pandas as pd
 
-_FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell original_invest now_invest")
+_FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest")
 
-"""
-one ticks:
-    match bid price:
-        probability of bidPri_up: 0.0000 , bidPri_down: 0.0090
-        probability of askPri_up: 0.0000 , askPri_down: 0.0067
 
-    match ask price:
-        probability of bidPri_up: 0.0064 , bidPri_down: 0.0000
-        probability of askPri_up: 0.0084 , askPri_down: 0.0000
-two ticks:
-    match bid price:
-        probability of bidPri_up: 0.0400 , bidPri_down: 0.0068
-        probability of askPri_up: 0.0000 , askPri_down: 0.0516
-    match ask price:
-        probability of bidPri_up: 0.0620 , bidPri_down: 0.0000
-        probability of askPri_up: 0.0057 , askPri_down: 0.0430
-    match mid price:
-        probability of bidPri_up: 0.0003 , bidPri_down: 0.0000
-        probability of askPri_up: 0.0000 , askPri_down: 0.0003
-"""
-
-PROB_LIST=[[[0, 0.0090, 0, 0.0067],[0.0064, 0, 0.0084, 0]],[[0.04, 0.0068, 0, 0, 0.0516],[0.062, 0, 0.0057, 0.043],[0.0003, 0, 0, 0.0003]]]
+ORIGINAL_INVEST = 10000
+PROB_LIST=[
+    [
+        [
+            [0.0019, 0.9978, 0.9978],
+            [0.0028, 0.9761, 0.9761],
+            [0.9841, 0.3, 0.3], #
+            [0.9879, 0.0120, 0.0816], #
+            [1.0000, 0.0034, 0.398] #
+        ],
+        [   
+            [0.0108, 0.0551, 0.0588],
+            [0.0142, 0.1318, 0.1382],
+            [0.9968, 0.0004, 0.3158],
+            [0.9979, 0, 0.9699],
+            [1.0000, 0, 0.9982]
+        ]
+    ],
+    [
+        [
+            [0.0005, 1, 1],
+            [0.0427, 0.4542, 0.4542],
+            [0.9496, 0.0004, 0.0004],
+            [0.9925, 0.3725, 0.3725],
+            [1.0000, 0.0222, 0.0444]
+        ],
+        [
+            [0.0062, 0.0909, 0.0909],
+            [0.0753, 0.0028, 0.2992],
+            [0.9505, 0.0009, 0.3998],
+            [0.9982, 0.0040, 0.3855],
+            [1.0000, 0, 1]
+        ],
+        [
+            [0.0030, 1, 1],
+            [0.3150, 0.5824, 0.9998], #
+            [0.6891, 0.5368, 1],
+            [0.9957, 0.4485, 0.9941],
+            [1.0000, 0, 1]
+        ],
+    ]
+]
 END_TICK = 50
 TICK_PRICE_GAP = 0.5
 TICK_QTY_TIMES_MORE = 1.5 # variable for qty to becomes more
 TICK_QTY_TIMES_LESS = 0.5 # variable for qty to becomes less
 BID_OP_INDEX = 19 # match price of first bidask at bid in allbidask index
 ASK_OP_INDEX = 20 # match price of first bidask at ask in allbidask index
-MATCH_PRICE_CHENGE = 0.8 # match price chance probility
+MATCH_PRICE_CHANGE = 0.8 # match price chance probility
 
 
 class FinBoard(_FB, Node):
     
-    # abstract method
-
     # expend
     def find_children(self):
         
@@ -69,7 +89,7 @@ class FinBoard(_FB, Node):
         
         # ROI
         profit = self.now_invest[0] + self.now_invest[1] * self.bidask[0]
-        roi = profit/self.original_invest
+        roi = profit/ORIGINAL_INVEST
         
         return roi
     
@@ -86,191 +106,192 @@ class FinBoard(_FB, Node):
 
         allbidask = list(self.allbidask)
         bidask = list(self.bidask)
-        profit = list(self.now_invest)
+        now_invest = list(self.now_invest)
         buy_or_sell = self.buy_or_sell
         # gap between aP1 and bP1
         gap = (bidask[12]-bidask[2])/TICK_PRICE_GAP
 
         if gap == 1.0: # gap = 1 tick
-            # print("1 tick")
+            print("1 tick")
+            print(bidask[0])
+            print(bidask[2])
+            print(bidask[12])
 
-            if bidask[0] == bidask[2]: # match at bid price
+            # match at bid price
+            if bidask[0] == bidask[2]: 
                 # print("match at bid price")
-                
-                rand = round(random.random(), 4)
-
-                # ask price down, bid price down, match price same
-                if rand < PROB_LIST[0][0][3]: 
-                    bidask = ask_price_down(bidask)
-                    allbidask, bidask = bid_price_down(allbidask, bidask)
-
-                # bid price down, which means bQ1 = 0, match price same
-                elif rand < PROB_LIST[0][0][1]: 
-                    allbidask, bidask = bid_price_down(allbidask, bidask)
-                    bidask = ask_price_same(bidask)
-                
-                # bid price same, ask price same, match price might go up
-                else: 
-                    bidask = bid_price_same(bidask)
-                    bidask = ask_price_same(bidask)
-
-                    rand = round(random.random(), 2)
-                    if rand < MATCH_PRICE_CHENGE: # match price up
-                        bidask, profit, buy_or_sell = match_price_up(transacted, bidask, profit, buy_or_sell)
+                index = 0
 
             # match at ask price
             elif bidask[0] == bidask[12]: 
                 # print("match at ask price")
+                index = 1
                 
-                rand = round(random.random(), 4)
+            rand = round(random.random(), 4)
+            rand_next_price = round(random.random(), 4)
+            print(index)
 
-                # bid price up, ask price down, match price same
-                if rand < PROB_LIST[0][1][0]: 
-                    bidask = bid_price_up(bidask)
-                    allbidask, bidask = ask_price_up(allbidask, bidask)
+            # bid五檔 up, ask五檔 up
+            if rand < PROB_LIST[0][index][0][0]: 
+                allbidask, bidask = bid_price_up(allbidask, bidask)
+                allbidask, bidask = ask_price_up(allbidask, bidask)
 
-                # ask price up, which means aQ1 = 0, match price same
-                elif rand < PROB_LIST[0][1][2]: 
-                    bidask = bid_price_same(bidask)
-                    allbidask, bidask = ask_price_up(allbidask, bidask)
+                # 下一筆成交價 up
+                if rand_next_price < PROB_LIST[0][index][0][1]: 
+                    bidask, now_invest, buy_or_sell = match_price_up(transacted, bidask, now_invest, buy_or_sell)
 
-                # bid price same, ask price same, match price go down
-                else: 
-                    bidask = bid_price_same(bidask)
-                    bidask = ask_price_same(bidask)
+                # 下一筆成交價下跌 down
+                elif rand_next_price < PROB_LIST[0][index][0][2]: 
+                    bidask, now_invest, buy_or_sell = match_price_down(transacted, bidask, now_invest, buy_or_sell)
 
-                    rand = round(random.random(), 2)
-                    if rand < MATCH_PRICE_CHENGE: # match price down
-                        bidask, profit, buy_or_sell = match_price_down(transacted, bidask, profit, buy_or_sell)
+            # bid五檔 same, ask五檔 up
+            elif rand < PROB_LIST[0][index][1][0]: 
+                allbidask, bidask = bid_price_same(allbidask, bidask)
+                allbidask, bidask = ask_price_up(allbidask, bidask)
+
+                # 下一筆成交價 up
+                if rand_next_price < PROB_LIST[0][index][1][1]: 
+                    bidask, now_invest, buy_or_sell = match_price_up(transacted, bidask, now_invest, buy_or_sell)
+
+                # 下一筆成交價 down
+                elif rand_next_price < PROB_LIST[0][index][1][2]: 
+                    bidask, now_invest, buy_or_sell = match_price_down(transacted, bidask, now_invest, buy_or_sell)
+
+            # bid五檔 same, ask五檔 same
+            elif rand < PROB_LIST[0][index][2][0]: 
+                allbidask, bidask = bid_price_same(allbidask, bidask)
+                allbidask, bidask = ask_price_same(allbidask, bidask)
+
+                # 下一筆成交價 up
+                if rand_next_price < PROB_LIST[0][index][2][1]: 
+                    bidask, now_invest, buy_or_sell = match_price_up(transacted, bidask, now_invest, buy_or_sell)
+
+                # 下一筆成交價 down
+                elif rand_next_price < PROB_LIST[0][index][2][2]: 
+                    bidask, now_invest, buy_or_sell = match_price_down(transacted, bidask, now_invest, buy_or_sell)
+
+            # bid五檔 down, ask五檔 same
+            elif rand < PROB_LIST[0][index][3][0]: 
+                allbidask, bidask = bid_price_down(allbidask, bidask)
+                allbidask, bidask = ask_price_same(allbidask, bidask)
+
+                # 下一筆成交價 up
+                if rand_next_price < PROB_LIST[0][index][3][1]: 
+                    bidask, now_invest, buy_or_sell = match_price_up(transacted, bidask, now_invest, buy_or_sell)
+
+                # 下一筆成交價 down
+                elif rand_next_price < PROB_LIST[0][index][3][2]: 
+                    bidask, now_invest, buy_or_sell = match_price_down(transacted, bidask, now_invest, buy_or_sell)
+            
+            # bid五檔 down, ask五檔 down
+            elif rand < PROB_LIST[0][index][4][0]: 
+                allbidask, bidask = bid_price_down(allbidask, bidask)
+                allbidask, bidask = ask_price_down(allbidask, bidask)
+
+                # 下一筆成交價 up
+                if rand_next_price < PROB_LIST[0][index][4][1]: 
+                    bidask, now_invest, buy_or_sell = match_price_up(transacted, bidask, now_invest, buy_or_sell)
+
+                # 下一筆成交價 down
+                elif rand_next_price < PROB_LIST[0][index][4][2]: 
+                    bidask, now_invest, buy_or_sell = match_price_down(transacted, bidask, now_invest, buy_or_sell)
 
 
         # gap = 2 ticks 
         elif gap == 2.0: 
-            # print("2 tick")
-
-             # match at bid price
+            print("2 tick")
+            print(bidask[0])
+            print(bidask[2])
+            print(bidask[12])
+            
+            # match at bid price
             if bidask[0] == bidask[2]:
                 # print("match at bid price")
+                index = 0
 
-                rand = round(random.random(), 4) 
-
-                # bid price down, which means bQ1 = 0, match price same
-                # ask price down because we only see gap = 2 ticks
-                if rand < PROB_LIST[0][2][1]: 
-                    allbidask, bidask = bid_price_down(allbidask, bidask)
-                    bidask = ask_price_down(bidask) # because we only see gap = 2 ticks
-                
-                # bid price up, match price up, ask price same
-                elif rand < PROB_LIST[0][2][0]: 
-                    bidask = bid_price_up(bidask)
-                    bidask = ask_price_same(bidask)
-                    bidask, profit = match_price_up(transacted, bidask, profit, buy_or_sell) # 一定會上漲，我方想賣都可以賣掉
-
-                
-                # ask price down, bid price same
-                elif rand < PROB_LIST[0][2][0]+PROB_LIST[0][2][3]: 
-                    bidask = ask_price_down(bidask)
-                    bidask = bid_price_same(bidask)
-                    
-                    rand = round(random.random(), 2)
-
-                    # match price might go up or same
-                    if rand < MATCH_PRICE_CHENGE: 
-                        bidask, profit, buy_or_sell = match_price_up(transacted, bidask, profit, buy_or_sell)
-                    
-                # bid price same, ask price same
-                else: 
-                    bidask = bid_price_same(bidask)
-                    bidask = ask_price_same(bidask)
-
-                    # match price might go up or same
-                    rand = round(random.random(), 2)
-                    if rand < MATCH_PRICE_CHENGE: 
-                        bidask, profit, buy_or_sell = match_price_up(transacted, bidask, profit, buy_or_sell)
-
-            
             # match at ask price
             elif bidask[0] == bidask[12]: 
                 # print("match at ask price")
-                
-                rand = round(random.random(), 4)
-
-                # ask price up, which means aQ1 = 0, match price same
-                # bid price up because we only see gap = 2 ticks
-                if rand < PROB_LIST[0][3][2]: 
-                    bidask = bid_price_up(bidask)
-                    allbidask, bidask = ask_price_up(allbidask, bidask)
-
-                # bid price up, ask price same
-                elif rand < PROB_LIST[0][3][0]: 
-                    bidask = bid_price_up(bidask)
-                    bidask = ask_price_same(bidask)
-
-                    rand = round(random.random(), 2)
-                    
-                    # match price might go down or same
-                    if rand < MATCH_PRICE_CHENGE:
-                        bidask, profit, buy_or_sell = match_price_down(transacted, bidask, profit, buy_or_sell) 
-                
-                # ask price down, bid price same, match price must go down
-                elif rand < PROB_LIST[0][3][0]+PROB_LIST[0][3][3]: 
-                    bidask = bid_price_same(bidask)
-                    bidask = ask_price_down(bidask)
-                    bidask, profit, buy_or_sell = match_price_down(transacted, bidask, profit, buy_or_sell) # 一定會下跌，我方想買都可以買到
-                
-                # bid price same, ask price same
-                else: 
-                    bidask = bid_price_same(bidask)
-                    bidask = ask_price_same(bidask)
-
-                    rand = round(random.random(), 2)
-                    
-                    # match price might go down or same
-                    if rand < MATCH_PRICE_CHENGE:
-                        bidask, profit, buy_or_sell = match_price_down(transacted, bidask, profit, buy_or_sell) 
-
+                index = 1
             
-            elif bidask[0] == bidask[2]+TICK_PRICE_GAP: # match at mid price
+            # match at mid price
+            elif bidask[0] == bidask[2]+TICK_PRICE_GAP: 
                 # print("match at mid price")
-                
-                rand = round(random.random(), 4)
+                index = 2
 
-                # bid price up, ask price same
-                if rand < PROB_LIST[0][4][0]: 
-                    bidask = bid_price_up(bidask)
-                    bidask = ask_price_same(bidask)
-                    
-                    rand = round(random.random(), 2)
+            print(index)
 
-                    # match price might go up or same
-                    if rand < MATCH_PRICE_CHENGE: 
-                        bidask, profit, buy_or_sell = match_price_up(transacted, bidask, profit, buy_or_sell) 
-                
-                # ask price down, bid price same
-                elif rand < PROB_LIST[0][4][0]+PROB_LIST[0][4][3]: 
-                    bidask = bid_price_same(bidask)
-                    bidask = ask_price_down(bidask)
 
-                    rand = round(random.random(), 2)
+            rand = round(random.random(), 4)
+            rand_next_price = round(random.random(), 4)
 
-                    # match price might go down or same
-                    if rand < MATCH_PRICE_CHENGE:
-                        bidask, profit, buy_or_sell, buy_or_sell = match_price_down(transacted, bidask, profit, buy_or_sell) 
+            # bid五檔 up, ask五檔 up
+            if rand < PROB_LIST[1][index][0][0]: 
+                allbidask, bidask = bid_price_up(allbidask, bidask)
+                allbidask, bidask = ask_price_up(allbidask, bidask)
 
-                # bid price same, ask price same
-                else: 
-                    bidask = bid_price_same(bidask)
-                    bidask = ask_price_same(bidask)
+                # 下一筆成交價 up
+                if rand_next_price < PROB_LIST[1][index][0][1]: 
+                    bidask, now_invest, buy_or_sell = match_price_up(transacted, bidask, now_invest, buy_or_sell)
 
-                rand = round(random.random(), 2)
+                # 下一筆成交價下跌 down
+                elif rand_next_price < PROB_LIST[1][index][0][2]: 
+                    bidask, now_invest, buy_or_sell = match_price_down(transacted, bidask, now_invest, buy_or_sell)
 
-                # match price might go down
-                if rand < 0.33:
-                    bidask, profit, buy_or_sell = match_price_down(transacted, bidask, profit, buy_or_sell) 
-                
-                # match price might go up
-                elif rand < 0.66: 
-                    bidask, profit, buy_or_sell = match_price_up(transacted, bidask, profit, buy_or_sell) 
+            # bid五檔 up, ask五檔 same
+            elif rand < PROB_LIST[1][index][1][0]: 
+                allbidask, bidask = bid_price_up(allbidask, bidask)
+                allbidask, bidask = ask_price_same(allbidask, bidask)
+
+                # 下一筆成交價 up
+                if rand_next_price < PROB_LIST[1][index][1][1]: 
+                    bidask, now_invest, buy_or_sell = match_price_up(transacted, bidask, now_invest, buy_or_sell)
+
+                # 下一筆成交價 down
+                elif rand_next_price < PROB_LIST[1][index][1][2]: 
+                    bidask, now_invest, buy_or_sell = match_price_down(transacted, bidask, now_invest, buy_or_sell)
+
+            # bid五檔 same, ask五檔 same
+            elif rand < PROB_LIST[1][index][2][0]: 
+                allbidask, bidask = bid_price_same(allbidask, bidask)
+                allbidask, bidask = ask_price_same(allbidask, bidask)
+
+                # 下一筆成交價 up
+                if rand_next_price < PROB_LIST[1][index][2][1]: 
+                    bidask, now_invest, buy_or_sell = match_price_up(transacted, bidask, now_invest, buy_or_sell)
+
+                # 下一筆成交價 down
+                elif rand_next_price < PROB_LIST[1][index][2][2]: 
+                    bidask, now_invest, buy_or_sell = match_price_down(transacted, bidask, now_invest, buy_or_sell)
+
+            # bid五檔 same, ask五檔 down
+            elif rand < PROB_LIST[1][index][3][0]: 
+                allbidask, bidask = bid_price_same(allbidask, bidask)
+                allbidask, bidask = ask_price_down(allbidask, bidask)
+
+                # 下一筆成交價 up
+                if rand_next_price < PROB_LIST[1][index][3][1]: 
+                    bidask, now_invest, buy_or_sell = match_price_up(transacted, bidask, now_invest, buy_or_sell)
+
+                # 下一筆成交價 down
+                elif rand_next_price < PROB_LIST[1][index][3][2]: 
+                    bidask, now_invest, buy_or_sell = match_price_down(transacted, bidask, now_invest, buy_or_sell)
+            
+            # bid五檔 down, ask五檔 down
+            elif rand < PROB_LIST[1][index][4][0]: 
+                allbidask, bidask = bid_price_down(allbidask, bidask)
+                allbidask, bidask = ask_price_down(allbidask, bidask)
+
+                # 下一筆成交價 up
+                if rand_next_price < PROB_LIST[1][index][4][1]: 
+                    bidask, now_invest, buy_or_sell = match_price_up(transacted, bidask, now_invest, buy_or_sell)
+
+                # 下一筆成交價 down
+                elif rand_next_price < PROB_LIST[1][index][4][2]: 
+                    bidask, now_invest, buy_or_sell = match_price_down(transacted, bidask, now_invest, buy_or_sell)
+
+
+
 
         # update all bidask
         allbidask = update_all_bidask(allbidask, bidask)
@@ -281,14 +302,9 @@ class FinBoard(_FB, Node):
         # is it terminal
         is_terminal = tick is END_TICK
         
-        return FinBoard(tuple(allbidask), tuple(bidask), tick, is_terminal, buy_or_sell, self.original_invest, tuple(profit))
+        return FinBoard(tuple(allbidask), tuple(bidask), tick, is_terminal, buy_or_sell, tuple(now_invest))
     
 
-    def return_node(self):
-        
-        return (
-            self.bidask
-        )
 
         
 # update bidask qty        
@@ -301,6 +317,7 @@ def update_all_bidask(all_bidask, now_bidask):
     # the price of the center of all_bidask(index = 19, 20) is the first match price
     # all_bidask  0 1 2 3 4 5 6 7 8 ... 19 20 ...
     #             b a b a b a b a b      b  a
+
     for i in range(2, 7):
         all_bidask[BID_OP_INDEX+int((now_bidask[i]-open_price)/TICK_PRICE_GAP)*2] = now_bidask[i+5] # bid
         all_bidask[ASK_OP_INDEX+int((now_bidask[i+10]-open_price)/TICK_PRICE_GAP)*2] = now_bidask[i+15] # ask
@@ -313,7 +330,7 @@ def update_all_bidask(all_bidask, now_bidask):
     all_bidask = tuple(all_bidask)
     return all_bidask
 
-def bid_price_up(bidask):
+def bid_price_up(allbidask, bidask):
     # print("Bid Price UP")
     
     # price
@@ -324,7 +341,7 @@ def bid_price_up(bidask):
     bidask[8:12] = bidask[7:11]
     bidask[7] = round(bidask[7] * TICK_QTY_TIMES_LESS)    
     
-    return bidask
+    return allbidask, bidask
 
 def bid_price_down(allbidask, bidask):
     # print("Bid Price DOWN")
@@ -342,13 +359,13 @@ def bid_price_down(allbidask, bidask):
     
     return allbidask, bidask
 
-def bid_price_same(bidask):
+def bid_price_same(allbidask, bidask):
     # print("Bid Price SAME")
     
     # qty
     bidask[7] = round(bidask[7]*random.uniform(1.5, 0.5)) 
     
-    return bidask
+    return allbidask, bidask
 
 def ask_price_up(allbidask, bidask):
     # print("Ask Price UP")
@@ -366,7 +383,7 @@ def ask_price_up(allbidask, bidask):
     
     return allbidask, bidask
 
-def ask_price_down(bidask):
+def ask_price_down(allbidask, bidask):
     # print("Ask Price DOWN")
     
     # price
@@ -377,69 +394,102 @@ def ask_price_down(bidask):
     bidask[18:22]= bidask[17:21]
     bidask[17] = round(bidask[17] * TICK_QTY_TIMES_LESS)
     
-    return bidask
+    return allbidask, bidask
 
-def ask_price_same(bidask):
+def ask_price_same(allbidask, bidask):
     # print("Ask Price SAME")
     bidask[17] = round(bidask[17]*random.uniform(1.5, 0.5))
     
-    return bidask
+    return allbidask, bidask
 
-def match_price_up(move, bidask, profit, buy_or_sell):
+def match_price_up(move, bidask, now_invest, buy_or_sell):
     # print("Match Price UP")
     bidask[0] += TICK_PRICE_GAP # 上漲
     if move == 0 and buy_or_sell == 1: # 我方想賣都可以賣掉
-        profit[0] = profit[1]*bidask[0]
-        profit[1] = 0
+        now_invest[0] = now_invest[1]*bidask[0]
+        now_invest[1] = 0
         buy_or_sell ^= 1
     
-    return bidask, profit, buy_or_sell
+    return bidask, now_invest, buy_or_sell
 
-def match_price_down(move, bidask, profit, buy_or_sell):
+def match_price_down(move, bidask, now_invest, buy_or_sell):
     # print("Match Price DOWN")
     bidask[0] -= TICK_PRICE_GAP # 下跌
     
     if move == 0 and buy_or_sell == 0: # 我方想買都可以買到
-        profit[1] = profit[0]/bidask[0]
-        profit[0] = 0
+        now_invest[1] = now_invest[0]/bidask[0]
+        now_invest[0] = 0
         buy_or_sell ^= 1
     
-    return bidask, profit, buy_or_sell
+    return bidask, now_invest, buy_or_sell
+
 
 def play_game():
+    # read file
+    stock_data = pd.read_csv('./2330/20221230.csv')
+    stock_data = stock_data.drop(columns=['openPri','matchDate', 'symbol', 'tolMatchQty','highPri','lowPri','refPri','upPri','dnPri','label'])
+    stock_data = stock_data.to_records(index=False)
+
     tree = MCTS()
-    board = new_fin_board()
 
-    # print node
-    print(board.return_node())
+    index = 0
+    n=20
 
-    for _ in range(30):
-        tree.do_rollout(board)
-        tree._print_tree_children(board)
+    # tick
+    tick = 0
 
-    # final choice after all the rollout
-    board = tree.choose(board)
-
-def new_fin_board():
-    
-    # 一開始的買賣五檔
-    fbidask = (495.0,2987,495.0,494.5,494.0,493.5,493.0,19.0,17.0,132.0,47.0,193.0,495.5,496.0,496.5,497.0,497.5,193,365,175,318,151)
-    
-    # 所有的買賣五檔
-    allbidask = (fbidask[0],)+(0,)*40
-    allbidask = update_all_bidask(allbidask, fbidask)
-    
     # 現在的操作要買或是賣
     buy_or_sell = 0 # buy = 0, sell = 1
     
-    # 投資
-    original_invest = 10000
-    
     # (現有的錢, 持股)
-    now_invest = (10000, 0)
+    now_invest = [ORIGINAL_INVEST, 0]
+
+    while True:
+
+        now_bidask = tuple(stock_data[index])
+        now_bidask = now_bidask[:2] + now_bidask[3:]
+        # print(now_bidask)
+
+        board = new_fin_board(now_bidask, tick, buy_or_sell, now_invest)
+
+        for _ in range(30):
+            tree.do_rollout(board)
+
+        tree._print_tree_children(board)
+
+        board = tree.choose(board)
+        print(board)
+
+        # make move, buy or sell
+        if buy_or_sell!= board.buy_or_sell:
+            if buy_or_sell == 0: # buy
+                now_invest[1] = now_invest[0]/(now_bidask[0]-TICK_PRICE_GAP)
+                now_invest[0] = 0
+            
+            elif buy_or_sell == 1: # sell
+                now_invest[0] = now_invest[1]*(now_bidask[0]+TICK_PRICE_GAP)
+                now_invest[1] = 0
+            
+
+
+        tick = board.tick
+        buy_or_sell = board.buy_or_sell 
+
+        index += n
+
+
+        # if index > len(stock_data):
+        #     break
+        if board.terminal:
+            break
+
+def new_fin_board(now_bidask, tick, buy_or_sell, now_invest):
+    # 紀錄所有可能發生的買賣五檔數量
+    allbidask = (now_bidask[0],)+(0,)*40
+    allbidask = update_all_bidask(allbidask, now_bidask)
     
-    # allbidask=所有的買賣五檔, bidask=現在的買賣五檔, tick=現在的tick量, terminal=結束, buy_or_sell=買或是賣, original_invest=一開始的投資價格, now_invest=現在的投資價格
-    return FinBoard(allbidask=allbidask, bidask=fbidask, tick=0, terminal=False, buy_or_sell=buy_or_sell, original_invest=original_invest, now_invest=now_invest)
+    # allbidask=所有的買賣五檔, bidask=現在的買賣五檔, tick=現在的tick量, terminal=結束, buy_or_sell=買或是賣, now_invest=現在的投資價格
+    return FinBoard(allbidask=allbidask, bidask=now_bidask, tick=tick, terminal=False, buy_or_sell=buy_or_sell, now_invest=tuple(now_invest))
 
 if __name__ == "__main__":
     play_game()

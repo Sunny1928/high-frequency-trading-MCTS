@@ -1,2 +1,4 @@
 model_weight/
-DS_Store
+.DS_Store
+2330/
+__pycache__/

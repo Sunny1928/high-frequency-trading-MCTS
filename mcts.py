@@ -59,7 +59,7 @@ class MCTS:
     
     def do_rollout(self, node):
         "Make the tree one layer better. "
-        print("do_rollout")
+        # print("do_rollout")
         path = self._select(node) 
         leaf = path[-1]
         self._expend(leaf)
