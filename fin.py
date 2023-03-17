@@ -9,12 +9,12 @@ _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_inv
 ORIGINAL_INVEST = 10000
 PROB_LIST=[
     [
-        [
+        [  # happen  up      up+down
             [0.0019, 0.9978, 0.9978],
             [0.0028, 0.9761, 0.9761],
-            [0.9841, 0.3, 0.3], #
-            [0.9879, 0.0120, 0.0816], #
-            [1.0000, 0.0034, 0.398] #
+            [0.9813, 0.3541, 0.3544],
+            [0.9879, 0.0120, 0.0816], 
+            [1.0000, 0.0034, 0.398] 
         ],
         [   
             [0.0108, 0.0551, 0.0588],
@@ -22,6 +22,20 @@ PROB_LIST=[
             [0.9968, 0.0004, 0.3158],
             [0.9979, 0, 0.9699],
             [1.0000, 0, 0.9982]
+        ],
+        [
+            [0, 0, 0, 0],
+            [0.0030, 1, 1],
+            [0.6906, 0.9934, 0.9934],
+            [0.1357, 0.8876, 0.8876],
+            [0.1707, 0.9107, 0.9107],
+        ],
+        [   
+            [0.1570, 0, 0.9189],
+            [0.1146, 0, 0.8272],
+            [0.7256, 0, 0.9922],
+            [0.0014, 0, 1],
+            [0.0014, 0, 1],
         ]
     ],
     [
@@ -41,10 +55,24 @@ PROB_LIST=[
         ],
         [
             [0.0030, 1, 1],
-            [0.3150, 0.5824, 0.9998], #
+            [0.3150, 0.5824, 0.9998],
             [0.6891, 0.5368, 1],
             [0.9957, 0.4485, 0.9941],
             [1.0000, 0, 1]
+        ],
+        [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0.7273, 1, 1],
+            [0.0909, 1, 1],
+            [0.1818, 0.5, 0.5]
+        ],
+        [
+            [0.1667, 0, 1],
+            [0.1111, 0, 1],
+            [0.7223, 0, 1],
+            [0, 0, 0],
+            [0, 0, 0]
         ],
     ]
 ]
@@ -112,24 +140,34 @@ class FinBoard(_FB, Node):
         gap = (bidask[12]-bidask[2])/TICK_PRICE_GAP
 
         if gap == 1.0: # gap = 1 tick
-            print("1 tick")
-            print(bidask[0])
-            print(bidask[2])
-            print(bidask[12])
+            # print("1 tick")
+            # print(bidask[0])
+            # print(bidask[2])
+            # print(bidask[12])
 
-            # match at bid price
+            # match at bid1
             if bidask[0] == bidask[2]: 
-                # print("match at bid price")
+                # print("match at bid1")
                 index = 0
 
-            # match at ask price
+            # match at ask1
             elif bidask[0] == bidask[12]: 
-                # print("match at ask price")
+                # print("match at ask1")
                 index = 1
+
+            # match at bid2
+            elif bidask[0] == bidask[2] - TICK_PRICE_GAP: 
+                # print("match at bid2")
+                index = 2
+
+            # match at ask2
+            elif bidask[0] == bidask[12] + TICK_PRICE_GAP: 
+                # print("match at ask2")
+                index = 3
                 
             rand = round(random.random(), 4)
             rand_next_price = round(random.random(), 4)
-            print(index)
+            # print(index)
 
             # bid五檔 up, ask五檔 up
             if rand < PROB_LIST[0][index][0][0]: 
@@ -199,10 +237,10 @@ class FinBoard(_FB, Node):
 
         # gap = 2 ticks 
         elif gap == 2.0: 
-            print("2 tick")
-            print(bidask[0])
-            print(bidask[2])
-            print(bidask[12])
+            # print("2 tick")
+            # print(bidask[0])
+            # print(bidask[2])
+            # print(bidask[12])
             
             # match at bid price
             if bidask[0] == bidask[2]:
@@ -219,7 +257,17 @@ class FinBoard(_FB, Node):
                 # print("match at mid price")
                 index = 2
 
-            print(index)
+            # match at bid2
+            elif bidask[0] == bidask[2] - TICK_PRICE_GAP: 
+                # print("match at bid2")
+                index = 3
+
+            # match at ask2
+            elif bidask[0] == bidask[12] + TICK_PRICE_GAP: 
+                # print("match at ask2")
+                index = 4
+
+            # print(index)
 
 
             rand = round(random.random(), 4)
@@ -433,7 +481,7 @@ def play_game():
     tree = MCTS()
 
     index = 0
-    n=20
+    n=10
 
     # tick
     tick = 0
