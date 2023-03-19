@@ -5,7 +5,8 @@ import pandas as pd
 
 _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest")
 
-ROLLOUT_TIMES = 30
+FILE_NAME = './2330/20221230.csv'
+ROLLOUT_TIMES = 10
 END_TICK = 10
 TICK_PRICE_GAP = 0.5
 
@@ -28,7 +29,7 @@ PROB_LIST = [
             [1.0000, 0, 0.9982]
         ],
         [
-            [0, 0, 0, 0],
+            [0, 0, 0],
             [0.0030, 1, 1],
             [0.6906, 0.9934, 0.9934],
             [0.1357, 0.8876, 0.8876],
@@ -40,6 +41,20 @@ PROB_LIST = [
             [0.7256, 0, 0.9922],
             [0.0014, 0, 1],
             [0.0014, 0, 1],
+        ],
+        [
+            [0, 0, 0],
+            [0, 0, 0],
+            [1, 1, 1],
+            [0, 0, 0],
+            [0, 0, 0],
+        ],
+        [   
+            [0, 0, 0],
+            [0, 0, 0],
+            [1, 0, 1],
+            [0, 0, 0],
+            [0, 0, 0],
         ]
     ],
     [
@@ -167,6 +182,16 @@ class FinBoard(_FB, Node):
             elif bidask[0] == bidask[12] + TICK_PRICE_GAP: 
                 # print("match at ask2")
                 index = 3
+
+            # match at bid3
+            elif bidask[0] == bidask[2] - 2*TICK_PRICE_GAP: 
+                # print("match at bid2")
+                index = 4
+
+            # match at ask3
+            elif bidask[0] == bidask[12] + 2*TICK_PRICE_GAP: 
+                # print("match at ask2")
+                index = 5
                 
 
             rand = round(random.random(), 4)
@@ -475,7 +500,7 @@ def match_price_down(move, bidask, now_invest, buy_or_sell):
 
 def play_game():
     # read file
-    stock_data = pd.read_csv('./2330/20221230.csv')
+    stock_data = pd.read_csv(FILE_NAME)
     stock_data = stock_data.drop(columns=['openPri','matchDate', 'symbol', 'tolMatchQty','highPri','lowPri','refPri','upPri','dnPri','label'])
     stock_data = stock_data.to_records(index=False)
 
