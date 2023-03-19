@@ -5,6 +5,10 @@ import pandas as pd
 
 _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest")
 
+ROLLOUT_TIMES = 30
+END_TICK = 10
+TICK_PRICE_GAP = 0.5
+
 
 ORIGINAL_INVEST = 10000
 PROB_LIST = [
@@ -76,9 +80,6 @@ PROB_LIST = [
         ],
     ]
 ]
-END_TICK = 10
-
-TICK_PRICE_GAP = 0.5
 TICK_QTY_TIMES_MORE = 1.5 # variable for qty to becomes more
 TICK_QTY_TIMES_LESS = 0.5 # variable for qty to becomes less
 BID_OP_INDEX = 19 # match price of first bidask at bid in allbidask index
@@ -500,7 +501,7 @@ def play_game():
 
         board = new_fin_board(now_bidask, tick, buy_or_sell, now_invest)
 
-        for _ in range(10):
+        for _ in range(ROLLOUT_TIMES):
             tree.do_rollout(board)
 
         tree._print_tree_children(board)
@@ -525,11 +526,8 @@ def play_game():
 
         index += n
 
-
         if index > len(stock_data):
             break
-        # if board.terminal:
-        #     break
 
 def new_fin_board(now_bidask, tick, buy_or_sell, now_invest):
     
