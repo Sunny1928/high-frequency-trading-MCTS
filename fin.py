@@ -5,9 +5,9 @@ import pandas as pd
 
 _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest")
 
-FILE_NAME = './2330/20221230.csv'
+FILE_NAME = './2330/20221202.csv'
 ROLLOUT_TIMES = 10
-END_TICK = 10
+END_TICK = 5 # simulation until END_TICK
 TICK_PRICE_GAP = 0.5
 
 
@@ -158,39 +158,29 @@ class FinBoard(_FB, Node):
         gap = (bidask[12]-bidask[2])/TICK_PRICE_GAP
 
         if gap == 1.0: # gap = 1 tick
-            print("1 tick")
-            print(bidask[0])
-            print(bidask[2])
-            print(bidask[12])
 
             # match at bid1
             if bidask[0] == bidask[2]: 
-                # print("match at bid1")
                 index = 0
 
             # match at ask1
             elif bidask[0] == bidask[12]: 
-                # print("match at ask1")
                 index = 1
 
             # match at bid2
             elif bidask[0] == bidask[2] - TICK_PRICE_GAP: 
-                # print("match at bid2")
                 index = 2
 
             # match at ask2
             elif bidask[0] == bidask[12] + TICK_PRICE_GAP: 
-                # print("match at ask2")
                 index = 3
 
             # match at bid3
             elif bidask[0] == bidask[2] - 2*TICK_PRICE_GAP: 
-                # print("match at bid2")
                 index = 4
 
             # match at ask3
             elif bidask[0] == bidask[12] + 2*TICK_PRICE_GAP: 
-                # print("match at ask2")
                 index = 5
                 
 
@@ -265,34 +255,25 @@ class FinBoard(_FB, Node):
 
         # gap = 2 ticks 
         elif gap == 2.0: 
-            print("2 tick")
-            print(bidask[0])
-            print(bidask[2])
-            print(bidask[12])
 
             # match at bid price
             if bidask[0] == bidask[2]:
-                # print("match at bid price")
                 index = 0
 
             # match at ask price
             elif bidask[0] == bidask[12]: 
-                # print("match at ask price")
                 index = 1
             
             # match at mid price
             elif bidask[0] == bidask[2]+TICK_PRICE_GAP: 
-                # print("match at mid price")
                 index = 2
 
             # match at bid2
             elif bidask[0] == bidask[2] - TICK_PRICE_GAP: 
-                # print("match at bid2")
                 index = 3
 
             # match at ask2
             elif bidask[0] == bidask[12] + TICK_PRICE_GAP: 
-                # print("match at ask2")
                 index = 4
 
 
@@ -395,18 +376,11 @@ def update_all_bidask(all_bidask, now_bidask):
     for i in range(2, 7):
         all_bidask[BID_OP_INDEX+int((now_bidask[i]-open_price)/TICK_PRICE_GAP)*2] = now_bidask[i+5] # bid
         all_bidask[ASK_OP_INDEX+int((now_bidask[i+10]-open_price)/TICK_PRICE_GAP)*2] = now_bidask[i+15] # ask
-        # print(i)
-        # print(all_bidask)
-        # print(now_bidask[i+10])
-        # print(open_price)
-        # print(ASK_OP_INDEX+int((now_bidask[i+10]-open_price)/TICK_PRICE_GAP)*2)
     
     all_bidask = tuple(all_bidask)
     return all_bidask
 
 def bid_price_up(allbidask, bidask):
-    # print("Bid Price UP")
-    
     # price
     bidask[3:7] = bidask[2:6]
     bidask[2] += TICK_PRICE_GAP
@@ -501,13 +475,12 @@ def match_price_down(move, bidask, now_invest, buy_or_sell):
 def play_game():
     # read file
     stock_data = pd.read_csv(FILE_NAME)
-    stock_data = stock_data.drop(columns=['openPri','matchDate', 'symbol', 'tolMatchQty','highPri','lowPri','refPri','upPri','dnPri','label'])
+    stock_data = stock_data.drop(columns=['openPri','matchTime','matchDate', 'symbol', 'tolMatchQty','highPri','lowPri','refPri','upPri','dnPri','label'])
     stock_data = stock_data.to_records(index=False)
 
     tree = MCTS()
 
     index = 0
-    n=1    
 
     # tick
     tick = 0
@@ -521,7 +494,6 @@ def play_game():
     while True:
         print("index: "+str(index))
         now_bidask = tuple(stock_data[index])
-        now_bidask = now_bidask[:2] + now_bidask[3:]
         # print(now_bidask)
 
         board = new_fin_board(now_bidask, tick, buy_or_sell, now_invest)
@@ -549,9 +521,14 @@ def play_game():
         # tick = board.tick  
         buy_or_sell = board.buy_or_sell 
 
-        index += n
+        index += 1
 
-        if index > len(stock_data):
+        if index >= len(stock_data):
+            print("最後持有：")
+            if now_invest[1] == 0:
+                print(now_invest[0])
+            else:
+                print(now_invest[1]*now_bidask[0])
             break
 
 def new_fin_board(now_bidask, tick, buy_or_sell, now_invest):
