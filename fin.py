@@ -7,7 +7,7 @@ _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_inv
 
 
 ORIGINAL_INVEST = 10000
-PROB_LIST=[
+PROB_LIST = [
     [
         [  # happen  up      up+down
             [0.0019, 0.9978, 0.9978],
@@ -76,7 +76,8 @@ PROB_LIST=[
         ],
     ]
 ]
-END_TICK = 50
+END_TICK = 10
+
 TICK_PRICE_GAP = 0.5
 TICK_QTY_TIMES_MORE = 1.5 # variable for qty to becomes more
 TICK_QTY_TIMES_LESS = 0.5 # variable for qty to becomes less
@@ -136,14 +137,15 @@ class FinBoard(_FB, Node):
         bidask = list(self.bidask)
         now_invest = list(self.now_invest)
         buy_or_sell = self.buy_or_sell
+        
         # gap between aP1 and bP1
         gap = (bidask[12]-bidask[2])/TICK_PRICE_GAP
 
         if gap == 1.0: # gap = 1 tick
-            # print("1 tick")
-            # print(bidask[0])
-            # print(bidask[2])
-            # print(bidask[12])
+            print("1 tick")
+            print(bidask[0])
+            print(bidask[2])
+            print(bidask[12])
 
             # match at bid1
             if bidask[0] == bidask[2]: 
@@ -165,9 +167,9 @@ class FinBoard(_FB, Node):
                 # print("match at ask2")
                 index = 3
                 
+
             rand = round(random.random(), 4)
             rand_next_price = round(random.random(), 4)
-            # print(index)
 
             # bid五檔 up, ask五檔 up
             if rand < PROB_LIST[0][index][0][0]: 
@@ -237,11 +239,11 @@ class FinBoard(_FB, Node):
 
         # gap = 2 ticks 
         elif gap == 2.0: 
-            # print("2 tick")
-            # print(bidask[0])
-            # print(bidask[2])
-            # print(bidask[12])
-            
+            print("2 tick")
+            print(bidask[0])
+            print(bidask[2])
+            print(bidask[12])
+
             # match at bid price
             if bidask[0] == bidask[2]:
                 # print("match at bid price")
@@ -266,8 +268,6 @@ class FinBoard(_FB, Node):
             elif bidask[0] == bidask[12] + TICK_PRICE_GAP: 
                 # print("match at ask2")
                 index = 4
-
-            # print(index)
 
 
             rand = round(random.random(), 4)
@@ -481,7 +481,7 @@ def play_game():
     tree = MCTS()
 
     index = 0
-    n=10
+    n=1    
 
     # tick
     tick = 0
@@ -493,14 +493,14 @@ def play_game():
     now_invest = [ORIGINAL_INVEST, 0]
 
     while True:
-
+        print("index: "+str(index))
         now_bidask = tuple(stock_data[index])
         now_bidask = now_bidask[:2] + now_bidask[3:]
         # print(now_bidask)
 
         board = new_fin_board(now_bidask, tick, buy_or_sell, now_invest)
 
-        for _ in range(30):
+        for _ in range(10):
             tree.do_rollout(board)
 
         tree._print_tree_children(board)
@@ -520,18 +520,19 @@ def play_game():
             
 
 
-        tick = board.tick
+        # tick = board.tick  
         buy_or_sell = board.buy_or_sell 
 
         index += n
 
 
-        # if index > len(stock_data):
-        #     break
-        if board.terminal:
+        if index > len(stock_data):
             break
+        # if board.terminal:
+        #     break
 
 def new_fin_board(now_bidask, tick, buy_or_sell, now_invest):
+    
     # 紀錄所有可能發生的買賣五檔數量
     allbidask = (now_bidask[0],)+(0,)*40
     allbidask = update_all_bidask(allbidask, now_bidask)
