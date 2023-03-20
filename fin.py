@@ -526,12 +526,14 @@ def play_game():
             if buy_or_sell == 0 and next_bidask[0] == now_bidask[0]-TICK_PRICE_GAP: # buy
                 now_invest[1] = now_invest[0]/(now_bidask[0]-TICK_PRICE_GAP)
                 now_invest[0] = 0
+                buy_or_sell = board.buy_or_sell 
             
             elif buy_or_sell == 1 and next_bidask[0] == now_bidask[0]+TICK_PRICE_GAP: # sell
                 now_invest[0] = now_invest[1]*(now_bidask[0]+TICK_PRICE_GAP)
                 now_invest[1] = 0
+                buy_or_sell = board.buy_or_sell 
 
-        buy_or_sell = board.buy_or_sell 
+
         
 
 def new_fin_board(now_bidask, tick, buy_or_sell, now_invest):
