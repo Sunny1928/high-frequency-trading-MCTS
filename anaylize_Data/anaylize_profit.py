@@ -91,7 +91,7 @@ for symbol  in symbols_list:
                 hold_stock = 0 
 
             transaction = next_transaction(cur_matchPri=cur_matchPri , bidPri1=data.iloc[i,6],askPri1=data.iloc[i,16])
-           
+        
         simulation_day -=1
         if not simulation_day:
             capital += cur_matchPri *hold_stock
