@@ -51,11 +51,12 @@ class MCTS:
 
         # buy
         if node.buy_or_sell == 0:
-            pred_prob = xgb_model_bid.predict_proba(test)
+            pred_prob = xgb_model_ask.predict_proba(test) # pridict down
 
         # sell
         elif node.buy_or_sell == 1:
-            pred_prob = xgb_model_ask.predict_proba(test)
+            pred_prob = xgb_model_bid.predict_proba(test) # pridict up
+
 
         return pred_prob[0]
     
