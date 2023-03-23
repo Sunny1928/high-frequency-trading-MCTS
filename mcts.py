@@ -99,7 +99,6 @@ class MCTS:
 
         self.children[node] = node.find_children()
         
-        # policy_network = [0.7, 0.3]
         policy_network = self.policy_network(node)
 
         # update happening probility of nodes

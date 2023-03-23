@@ -5,42 +5,42 @@ import pandas as pd
 
 _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest")
 
-FILE_NAME = './2330/20221202.csv'
+FILE_NAME = './2330/20221123.csv'
 ROLLOUT_TIMES = 10
-END_TICK = 5 # simulation until END_TICK
+END_TICK = 10 # simulation until END_TICK
 TICK_PRICE_GAP = 0.5
 
 
 ORIGINAL_INVEST = 10000
 PROB_LIST = [
-    [
-        [  # happen  up      up+down
-            [0.0019, 0.9978, 0.9978],
-            [0.0028, 0.9761, 0.9761],
-            [0.9813, 0.3541, 0.3544],
-            [0.9879, 0.0120, 0.0816], 
-            [1.0000, 0.0034, 0.398] 
+    [   
+        [ # happen  up      up+down
+            [0.0019, 0.9976, 0.9976],
+            [0.0009, 0.9793, 0.9793],
+            [0.9812, 0.3539, 0.3542],
+            [0.0038, 0.0095, 0.0795],
+            [0.0122, 0.0030, 0.0391]
         ],
         [   
-            [0.0108, 0.0551, 0.0588],
-            [0.0142, 0.1318, 0.1382],
-            [0.9968, 0.0004, 0.3158],
-            [0.9979, 0, 0.9699],
-            [1.0000, 0, 0.9982]
+            [0.0109, 0.0557, 0.0594],
+            [0.0035, 0.1317, 0.1387],
+            [0.9825, 0.0004, 0.3138],
+            [0.0011, 0.0000, 0.9714],
+            [0.0020, 0.0000, 0.9980]
         ],
         [
             [0, 0, 0],
-            [0.0030, 1, 1],
-            [0.6906, 0.9934, 0.9934],
-            [0.1357, 0.8876, 0.8876],
-            [0.1707, 0.9107, 0.9107],
+            [0.0033, 1, 1],
+            [0.6927, 0.9928, 0.9928],
+            [0.1329, 0.8750, 0.8750],
+            [0.1711, 0.9029, 0.9029],
         ],
         [   
-            [0.1570, 0, 0.9189],
-            [0.1146, 0, 0.8272],
-            [0.7256, 0, 0.9922],
-            [0.0014, 0, 1],
-            [0.0014, 0, 1],
+            [0.1592, 0, 0.9223],
+            [0.1113, 0, 0.8056],
+            [0.7265, 0, 0.9936],
+            [0.0015, 0, 1],
+            [0.0015, 0, 1],
         ],
         [
             [0, 0, 0],
@@ -59,36 +59,36 @@ PROB_LIST = [
     ],
     [
         [
-            [0.0005, 1, 1],
-            [0.0427, 0.4542, 0.4542],
-            [0.9496, 0.0004, 0.0004],
-            [0.9925, 0.3725, 0.3725],
-            [1.0000, 0.0222, 0.0444]
+            [0.0009, 1, 1],
+            [0.2029, 0.4391, 0.4391],
+            [0.5844, 0.3218, 0.3218],
+            [0.2039, 0.3810, 0.3810],
+            [0.0079, 0, 0]
         ],
         [
-            [0.0062, 0.0909, 0.0909],
-            [0.0753, 0.0028, 0.2992],
-            [0.9505, 0.0009, 0.3998],
-            [0.9982, 0.0040, 0.3855],
-            [1.0000, 0, 1]
+            [0.0076, 0.1111, 0.1111],
+            [0.2769, 0.0031, 0.3059],
+            [0.5182, 0.0033, 0.3775],
+            [0.1956, 0.0043, 0.3809],
+            [0.0017, 0, 1]
         ],
         [
-            [0.0030, 1, 1],
-            [0.3150, 0.5824, 0.9998],
-            [0.6891, 0.5368, 1],
-            [0.9957, 0.4485, 0.9941],
-            [1.0000, 0, 1]
+            [0.0034, 1, 1],
+            [0.3107, 0.5857, 0.9968],
+            [0.3723, 0.5325, 1],
+            [0.3087, 0.4409, 0.9936],
+            [0.0049, 0, 1]
         ],
         [
             [0, 0, 0],
             [0, 0, 0],
-            [0.7273, 1, 1],
-            [0.0909, 1, 1],
-            [0.1818, 0.5, 0.5]
+            [0.6666, 1, 1],
+            [0.1667, 1, 1],
+            [0.1667, 0, 1]
         ],
         [
-            [0.1667, 0, 1],
-            [0.1111, 0, 1],
+            [0.0910, 0, 1],
+            [0.1817, 0, 1],
             [0.7223, 0, 1],
             [0, 0, 0],
             [0, 0, 0]
@@ -481,22 +481,14 @@ def play_game():
     tree = MCTS()
 
     index = 0
-
-    # tick
-    tick = 0
-
-    # 現在的操作要買或是賣
-    buy_or_sell = 0 # buy = 0, sell = 1
-    
-    # (現有的錢, 持股)
-    now_invest = [ORIGINAL_INVEST, 0]
+    buy_or_sell = 0 # buy: 0, sell: 1
+    now_invest=[ORIGINAL_INVEST, 0]
 
     while True:
         print("index: "+str(index))
         now_bidask = tuple(stock_data[index])
-        # print(now_bidask)
 
-        board = new_fin_board(now_bidask, tick, buy_or_sell, now_invest)
+        board = new_fin_board(now_bidask, tick=0, buy_or_sell=buy_or_sell, now_invest=now_invest)
 
         for _ in range(ROLLOUT_TIMES):
             tree.do_rollout(board)
@@ -505,10 +497,6 @@ def play_game():
 
         board = tree.choose(board)
         print(board)
-        
-
-
-        # tick = board.tick  
 
         index += 1
 
@@ -522,14 +510,14 @@ def play_game():
 
         # make move, buy or sell
         next_bidask = tuple(stock_data[index])
-        if buy_or_sell != board.buy_or_sell:
+        if buy_or_sell != board.buy_or_sell: # make move
             if buy_or_sell == 0 and next_bidask[0] == now_bidask[0]-TICK_PRICE_GAP: # buy
-                now_invest[1] = now_invest[0]/(now_bidask[0]-TICK_PRICE_GAP)
+                now_invest[1] = now_invest[0]/(next_bidask[0])
                 now_invest[0] = 0
                 buy_or_sell = board.buy_or_sell 
             
             elif buy_or_sell == 1 and next_bidask[0] == now_bidask[0]+TICK_PRICE_GAP: # sell
-                now_invest[0] = now_invest[1]*(now_bidask[0]+TICK_PRICE_GAP)
+                now_invest[0] = now_invest[1]*(next_bidask[0])
                 now_invest[1] = 0
                 buy_or_sell = board.buy_or_sell 
 
