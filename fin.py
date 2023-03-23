@@ -493,10 +493,10 @@ def play_game():
         for _ in range(ROLLOUT_TIMES):
             tree.do_rollout(board)
 
-        tree._print_tree_children(board)
+        # tree._print_tree_children(board)
 
         board = tree.choose(board)
-        print(board)
+        print(board.now_invest)
 
         index += 1
 
