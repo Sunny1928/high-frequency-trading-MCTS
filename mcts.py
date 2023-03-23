@@ -3,6 +3,12 @@ from collections import defaultdict
 import math
 import xgboost as xgb
 
+xgb_model_ask = xgb.XGBClassifier()
+xgb_model_bid = xgb.XGBClassifier()      
+xgb_model_ask.load_model("./model_weight/ask_using.model")
+xgb_model_bid.load_model("./model_weight/bid_using.model")
+
+
 class MCTS:
     "Monte Carlo tree searcher. First rollout the tree then choose a move."
 
@@ -41,19 +47,15 @@ class MCTS:
         return max(self.children[node], key = score)
     
     def policy_network(self, node):
-        xgb_model = xgb.XGBClassifier()
         test = [[node.bidask[1]]+list(node.bidask[7:12])+list(node.bidask[17:23])]
 
         # buy
         if node.buy_or_sell == 0:
-            weight_path = "./model_weight/bid_using.model"
+            pred_prob = xgb_model_bid.predict_proba(test)
 
         # sell
         elif node.buy_or_sell == 1:
-            weight_path = "./model_weight/ask_using.model"
-            
-        xgb_model.load_model(weight_path)
-        pred_prob = xgb_model.predict_proba(test)
+            pred_prob = xgb_model_ask.predict_proba(test)
 
         return pred_prob[0]
     
