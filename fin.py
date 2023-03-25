@@ -534,4 +534,3 @@ def new_fin_board(now_bidask, tick, buy_or_sell, now_invest):
 
 if __name__ == "__main__":
     play_game()
-

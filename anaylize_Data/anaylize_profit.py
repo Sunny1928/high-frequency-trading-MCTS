@@ -6,15 +6,15 @@ from tqdm import tqdm
 
 
 
-def next_transaction(cur_matchPri ,bidPri1 ,askPri1):
+def next_transaction(cur_matchPri ,bidPri1 ,askPri1,tick_gap):
     # 成交在買 , 上漲 , 下筆要賣
     if cur_matchPri == bidPri1:
-        return 0
+        return 0 , cur_matchPri + tick_gap
     # 成交在賣 , 下跌 , 下筆要買
     elif cur_matchPri == askPri1:
-        return 1
+        return 1 , cur_matchPri - tick_gap
     else :
-        return -1
+        return -1 , -1
 
 
 
@@ -22,7 +22,7 @@ def next_transaction(cur_matchPri ,bidPri1 ,askPri1):
 filepath = "./stock_dataset"
 simulation_day = 1
 symbols_list = os.listdir(filepath)
-
+tick_gap = 0.5 
 
 fee =0 
 tax =0
@@ -34,6 +34,7 @@ tax =0
 capital = 10000
 # 持股
 hold_stock = 0
+Date = "20221107.csv"
 
 for symbol  in symbols_list:
     symbol ="2330"
@@ -44,8 +45,10 @@ for symbol  in symbols_list:
     
     # -1 : 不操作 , 0 : 賣 , 1:買
     transaction = -1 
+    want_price = -1
     
     for date in dates_list :
+        date = Date
         data = pd.read_csv(os.path.join(symbol_path,date))
         loop = tqdm(range(len(data)-1))
         loop.set_description(f"{date}")
@@ -53,44 +56,45 @@ for symbol  in symbols_list:
             cur_matchPri = data.iloc[i,2]
             next_price = data.iloc[i+1,2]
 
-            # 這筆要買
-            if transaction == 1 :
-                # 增加量
-                new_hold = int(capital/cur_matchPri)
-                # 計算費用
-                pay = int(new_hold * cur_matchPri)
-                # 考慮手續費時用
-                if (pay+ int(pay*fee)) > capital:
-                    if pay != 0 :
-                        while (pay+ int(pay*fee) ) > capital:
-                            new_hold -=1 
-                            pay = int(new_hold * cur_matchPri)
-                    else :
-                        transaction = next_transaction(cur_matchPri=cur_matchPri , bidPri1=data.iloc[i,6],askPri1=data.iloc[i,16])
-                        # 買不了就下一個
-                        continue 
-                # 扣錢
-                capital -= pay+ int(pay*fee)
-                # 加上去總持有
-                hold_stock += new_hold
-                #print(f"成交價: {cur_matchPri} ,買 {new_hold}股 , capital become -> {capital} ,hold_stock -> {hold_stock}")
-            
-            # 這筆要賣 
-            elif transaction == 0 :
+            if want_price == cur_matchPri:
+                # 這筆要買
+                if transaction == 1 :
+                    # 增加量
+                    new_hold = capital/cur_matchPri
+                    # 計算費用
+                    pay = new_hold * cur_matchPri
+                    # 考慮手續費時用
+                    if (pay+ pay*fee) > capital:
+                        if pay != 0 :
+                            while (pay+ pay*fee ) > capital:
+                                new_hold -=1 
+                                pay = new_hold * cur_matchPri
+                        else :
+                            transaction , want_price= next_transaction(cur_matchPri=cur_matchPri , bidPri1=data.iloc[i,6] ,askPri1=data.iloc[i,16] ,tick_gap= tick_gap)
+                            # 買不了就下一個
+                            continue 
+                    # 扣錢
+                    capital -= pay+ pay*fee
+                    # 加上去總持有
+                    hold_stock += new_hold
+                    #print(f"成交價: {cur_matchPri} ,買 {new_hold}股 , capital become -> {capital} ,hold_stock -> {hold_stock}")
                 
-                # 計算賣出後獲利
-                gain = int(hold_stock * cur_matchPri)
-                # 考慮手續費時用
-                gain = gain - int(gain*fee) - int(gain*tax)
-                # 資金增加
+                # 這筆要賣 
+                elif transaction == 0 :
+                    
+                    # 計算賣出後獲利
+                    gain = hold_stock * cur_matchPri
+                    # 考慮手續費時用
+                    gain = gain - gain*fee - gain*tax
+                    # 資金增加
+                    
+                    capital += gain
                 
-                capital += gain
-            
-                #print(f"成交價: {cur_matchPri} ,賣 {hold_stock}股 , capital become -> {capital} ,hold_stock become -> 0")
-                # 持有歸零
-                hold_stock = 0 
+                    #print(f"成交價: {cur_matchPri} ,賣 {hold_stock}股 , capital become -> {capital} ,hold_stock become -> 0")
+                    # 持有歸零
+                    hold_stock = 0 
 
-            transaction = next_transaction(cur_matchPri=cur_matchPri , bidPri1=data.iloc[i,6],askPri1=data.iloc[i,16])
+            transaction , want_price = next_transaction(cur_matchPri=cur_matchPri , bidPri1=data.iloc[i,6],askPri1=data.iloc[i,16],tick_gap=tick_gap)
         
         simulation_day -=1
         if not simulation_day:
