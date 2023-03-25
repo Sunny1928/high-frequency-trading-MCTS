@@ -2,6 +2,7 @@ from collections import namedtuple, defaultdict
 import random
 from mcts import MCTS, Node
 import pandas as pd
+from tqdm import tqdm, trange
 
 _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest")
 
@@ -480,12 +481,11 @@ def play_game():
 
     tree = MCTS()
 
-    index = 0
     buy_or_sell = 0 # buy: 0, sell: 1
     now_invest=[ORIGINAL_INVEST, 0]
 
-    while True:
-        print("index: "+str(index))
+    for index in trange(len(stock_data)):
+        # print("index: "+str(index))
         now_bidask = tuple(stock_data[index])
 
         board = new_fin_board(now_bidask, tick=0, buy_or_sell=buy_or_sell, now_invest=now_invest)
@@ -496,20 +496,19 @@ def play_game():
         # tree._print_tree_children(board)
 
         board = tree.choose(board)
-        print(board.now_invest)
+        # print(board.now_invest)
 
-        index += 1
 
-        if index >= len(stock_data):
-            print("最後持有：")
-            if now_invest[1] == 0:
-                print(now_invest[0])
-            else:
-                print(now_invest[1]*now_bidask[0])
+        if index == len(stock_data)-1:
+            money = now_invest[0]+now_invest[1]*now_bidask[0]
+            print("FILE_NAME: " + str(FILE_NAME))
+            print("ROLLOUT_TIMES: " + str(ROLLOUT_TIMES))
+            print("END_TICK: " + str(END_TICK))
+            print("最後持有："+ str(money))
             break
 
         # make move, buy or sell
-        next_bidask = tuple(stock_data[index])
+        next_bidask = tuple(stock_data[index+1])
         if buy_or_sell != board.buy_or_sell: # make move
             if buy_or_sell == 0 and next_bidask[0] == now_bidask[0]-TICK_PRICE_GAP: # buy
                 now_invest[1] = now_invest[0]/(next_bidask[0])
