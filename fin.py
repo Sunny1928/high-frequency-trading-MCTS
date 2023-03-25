@@ -4,6 +4,7 @@ from mcts import MCTS, Node
 import pandas as pd
 from tqdm import tqdm, trange
 
+
 _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest")
 
 FILE_NAME = './2330/20221123.csv'
