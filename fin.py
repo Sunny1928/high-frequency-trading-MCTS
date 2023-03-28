@@ -8,7 +8,7 @@ from tqdm import tqdm, trange
 _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest")
 
 FILE_NAME = './2330/20221123.csv'
-ROLLOUT_TIMES = 10
+ROLLOUT_TIMES = 30
 END_TICK = 10 # simulation until END_TICK
 TICK_PRICE_GAP = 0.5
 
@@ -482,11 +482,12 @@ def play_game():
 
     tree = MCTS()
 
+    start_index = 0
     buy_or_sell = 0 # buy: 0, sell: 1
     now_invest=[ORIGINAL_INVEST, 0]
 
-    for index in trange(len(stock_data)):
-        # print("index: "+str(index))
+    for index in range(start_index, len(stock_data)):
+        print("index: "+str(index))
         now_bidask = tuple(stock_data[index])
 
         board = new_fin_board(now_bidask, tick=0, buy_or_sell=buy_or_sell, now_invest=now_invest)
@@ -497,8 +498,6 @@ def play_game():
         # tree._print_tree_children(board)
 
         board = tree.choose(board)
-        # print(board.now_invest)
-
 
         if index == len(stock_data)-1:
             money = now_invest[0]+now_invest[1]*now_bidask[0]
@@ -520,6 +519,9 @@ def play_game():
                 now_invest[0] = now_invest[1]*(next_bidask[0])
                 now_invest[1] = 0
                 buy_or_sell = board.buy_or_sell 
+
+        print(now_invest)
+        
 
 
         
