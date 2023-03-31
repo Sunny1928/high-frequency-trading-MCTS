@@ -10,21 +10,6 @@ xgb_model_bid = xgb.XGBClassifier()
 xgb_model_ask.load_model("./model_weight/ask_using.model")
 xgb_model_bid.load_model("./model_weight/bid_using.model")
 
-def model(node):
-    test = [[node.bidask[1]]+list(node.bidask[7:12])+list(node.bidask[17:23])]
-    # not transcated 0, transcated 1 buy, sell
-    # buy
-    if node.buy_or_sell == 0:
-        pred_prob = xgb_model_ask.predict_proba(test) # pridict down
-        action = np.argmax(pred_prob[0])
-
-    # sell
-    elif node.buy_or_sell == 1:
-        pred_prob = xgb_model_bid.predict_proba(test) # pridict up
-        action = np.argmax(pred_prob[0])
-    
-    return action
-
 class MCTS:
     "Monte Carlo tree searcher. First rollout the tree then choose a move."
 
@@ -47,9 +32,6 @@ class MCTS:
 
     
 
-
-    
-
     def uct(self, n):
         "Upper confidence bound trees"
         return self.Q[n] / self.N[n] + self.exploration_weight*(self.P[n]/self.N[n])
@@ -64,12 +46,15 @@ class MCTS:
                 return float("-inf") # the most min value
             return self.Q[n] / self.N[n] # avg
         
-        # choose the node having max score 
-        return max(self.children[node], key = score)
+        # choose the node having max score
+        children_list = self.children[node]
+        max_index = children_list.index(max(children_list, key = score))
+
+        return max_index
     
     def policy_network(self, node):
         test = [[node.bidask[1]]+list(node.bidask[7:12])+list(node.bidask[17:23])]
-
+        
         # buy
         if node.buy_or_sell == 0:
             pred_prob = xgb_model_ask.predict_proba(test) # pridict down
@@ -78,7 +63,7 @@ class MCTS:
         elif node.buy_or_sell == 1:
             pred_prob = xgb_model_bid.predict_proba(test) # pridict up
 
-        return pred_prob[0]
+        return [pred_prob[0][1], pred_prob[0][0]]
     
     def do_rollout(self, node):
         "Make the tree one layer better. "

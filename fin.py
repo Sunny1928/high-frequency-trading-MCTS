@@ -1,6 +1,6 @@
 from collections import namedtuple, defaultdict
 import random
-from mcts import MCTS, Node, model
+from mcts import MCTS, Node
 import pandas as pd
 from tqdm import tqdm, trange
 
@@ -8,9 +8,9 @@ from tqdm import tqdm, trange
 
 _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest")
 
-FILE_NAME = './2330/20221123.csv'
+FILE_NAME = './2330/20221230.csv'
 ROLLOUT_TIMES = 10
-END_TICK = 5 # simulation until END_TICK
+END_TICK = 10 # simulation until END_TICK
 TICK_PRICE_GAP = 0.5
 
 
@@ -102,24 +102,22 @@ TICK_QTY_TIMES_MORE = 1.5 # variable for qty to becomes more
 TICK_QTY_TIMES_LESS = 0.5 # variable for qty to becomes less
 BID_OP_INDEX = 19 # match price of first bidask at bid in allbidask index
 ASK_OP_INDEX = 20 # match price of first bidask at ask in allbidask index
-MATCH_PRICE_CHANGE = 0.8 # match price chance probility
 
 
 class FinBoard(_FB, Node):
     
     # expend
     def find_children(self):
-        
         if self.terminal:
             return set()
         
         # transacted, not transacted
         action = (None, None) 
 
-        return {
+        return [
             # run all the nodes including transacted and not transacted
             self.make_move(i) for i, value in enumerate(action) if value is None
-        }
+        ]
     
     # random choose a node
     def find_random_child(self): 
@@ -128,7 +126,7 @@ class FinBoard(_FB, Node):
             return None
         
         # random choose a node (transacted and not transacted)
-        return self.make_move(model(self))
+        return self.make_move(random.randint(0,1))
     
     def reward(self):
         
@@ -138,7 +136,6 @@ class FinBoard(_FB, Node):
         # ROI
         profit = self.now_invest[0] + self.now_invest[1] * self.bidask[0]
         roi = profit/ORIGINAL_INVEST
-        # print(roi)
         
         return roi
     
@@ -460,7 +457,8 @@ def match_price_up(move, bidask, now_invest, buy_or_sell):
     if move == 0 and buy_or_sell == 1: # 我方想賣都可以賣掉
         now_invest[0] = now_invest[1]*bidask[0]
         now_invest[1] = 0
-        buy_or_sell ^= 1
+        buy_or_sell = 0
+
     
     return bidask, now_invest, buy_or_sell
 
@@ -471,7 +469,7 @@ def match_price_down(move, bidask, now_invest, buy_or_sell):
     if move == 0 and buy_or_sell == 0: # 我方想買都可以買到
         now_invest[1] = now_invest[0]/bidask[0]
         now_invest[0] = 0
-        buy_or_sell ^= 1
+        buy_or_sell = 1
     
     return bidask, now_invest, buy_or_sell
 
@@ -484,7 +482,6 @@ def play_game():
     start_index = 0 # the index u want to start with
     buy_or_sell = 0 # buy: 0, sell: 1
     now_invest=[ORIGINAL_INVEST, 0]# the now_invest u want to start with
-    tree = MCTS()
 
     all_len = len(stock_data)
     loop = tqdm(range(start_index, all_len))
@@ -493,17 +490,16 @@ def play_game():
 
     for index in loop:
         # print("index: "+str(index))
+        tree = MCTS()
+
 
         now_bidask = tuple(stock_data[index])
 
         board = new_fin_board(now_bidask, tick=0, buy_or_sell=buy_or_sell, now_invest=now_invest)
-
         for _ in range(ROLLOUT_TIMES):
             tree.do_rollout(board)
-
+            
         # tree._print_tree_children(board)
-
-        board = tree.choose(board)
 
         if index == len(stock_data)-1:
             money = now_invest[0]+now_invest[1]*now_bidask[0]
@@ -513,18 +509,21 @@ def play_game():
             print("最後持有："+ str(money))
             break
 
+        children_index = tree.choose(board)
+
         # make move, buy or sell
         next_bidask = tuple(stock_data[index+1])
-        if buy_or_sell != board.buy_or_sell: # make move
+
+        if children_index == 0: # make move
             if buy_or_sell == 0 and next_bidask[0] == now_bidask[0]-TICK_PRICE_GAP: # buy
                 now_invest[1] = now_invest[0]/(next_bidask[0])
                 now_invest[0] = 0
-                buy_or_sell = board.buy_or_sell 
+                buy_or_sell = 1
             
             elif buy_or_sell == 1 and next_bidask[0] == now_bidask[0]+TICK_PRICE_GAP: # sell
                 now_invest[0] = now_invest[1]*(next_bidask[0])
                 now_invest[1] = 0
-                buy_or_sell = board.buy_or_sell 
+                buy_or_sell = 0
 
         # print(now_invest)
         loop.set_description(f"[{index}/{all_len}], capital: {now_invest[0]} , stock: {now_invest[1]}")
