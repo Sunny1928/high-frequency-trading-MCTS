@@ -1,15 +1,16 @@
 from collections import namedtuple, defaultdict
 import random
-from mcts import MCTS, Node
+from mcts import MCTS, Node, model
 import pandas as pd
 from tqdm import tqdm, trange
+
 
 
 _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest")
 
 FILE_NAME = './2330/20221123.csv'
-ROLLOUT_TIMES = 30
-END_TICK = 10 # simulation until END_TICK
+ROLLOUT_TIMES = 10
+END_TICK = 5 # simulation until END_TICK
 TICK_PRICE_GAP = 0.5
 
 
@@ -127,7 +128,7 @@ class FinBoard(_FB, Node):
             return None
         
         # random choose a node (transacted and not transacted)
-        return self.make_move(random.randint(0,1))
+        return self.make_move(model(self))
     
     def reward(self):
         
@@ -137,6 +138,7 @@ class FinBoard(_FB, Node):
         # ROI
         profit = self.now_invest[0] + self.now_invest[1] * self.bidask[0]
         roi = profit/ORIGINAL_INVEST
+        # print(roi)
         
         return roi
     
@@ -473,21 +475,25 @@ def match_price_down(move, bidask, now_invest, buy_or_sell):
     
     return bidask, now_invest, buy_or_sell
 
-
 def play_game():
     # read file
     stock_data = pd.read_csv(FILE_NAME)
     stock_data = stock_data.drop(columns=['openPri','matchTime','matchDate', 'symbol', 'tolMatchQty','highPri','lowPri','refPri','upPri','dnPri','label'])
     stock_data = stock_data.to_records(index=False)
 
+    start_index = 0 # the index u want to start with
+    buy_or_sell = 0 # buy: 0, sell: 1
+    now_invest=[ORIGINAL_INVEST, 0]# the now_invest u want to start with
     tree = MCTS()
 
-    start_index = 0
-    buy_or_sell = 0 # buy: 0, sell: 1
-    now_invest=[ORIGINAL_INVEST, 0]
+    all_len = len(stock_data)
+    loop = tqdm(range(start_index, all_len))
 
-    for index in range(start_index, len(stock_data)):
-        print("index: "+str(index))
+
+
+    for index in loop:
+        # print("index: "+str(index))
+
         now_bidask = tuple(stock_data[index])
 
         board = new_fin_board(now_bidask, tick=0, buy_or_sell=buy_or_sell, now_invest=now_invest)
@@ -520,7 +526,9 @@ def play_game():
                 now_invest[1] = 0
                 buy_or_sell = board.buy_or_sell 
 
-        print(now_invest)
+        # print(now_invest)
+        loop.set_description(f"[{index}/{all_len}], capital: {now_invest[0]} , stock: {now_invest[1]}")
+        loop.update
         
 
 

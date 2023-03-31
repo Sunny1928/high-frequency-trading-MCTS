@@ -2,12 +2,28 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 import math
 import xgboost as xgb
+import numpy as np
 
+# model
 xgb_model_ask = xgb.XGBClassifier()
 xgb_model_bid = xgb.XGBClassifier()      
 xgb_model_ask.load_model("./model_weight/ask_using.model")
 xgb_model_bid.load_model("./model_weight/bid_using.model")
 
+def model(node):
+    test = [[node.bidask[1]]+list(node.bidask[7:12])+list(node.bidask[17:23])]
+    # not transcated 0, transcated 1 buy, sell
+    # buy
+    if node.buy_or_sell == 0:
+        pred_prob = xgb_model_ask.predict_proba(test) # pridict down
+        action = np.argmax(pred_prob[0])
+
+    # sell
+    elif node.buy_or_sell == 1:
+        pred_prob = xgb_model_bid.predict_proba(test) # pridict up
+        action = np.argmax(pred_prob[0])
+    
+    return action
 
 class MCTS:
     "Monte Carlo tree searcher. First rollout the tree then choose a move."
@@ -28,6 +44,11 @@ class MCTS:
 
         # exploration_weight
         self.exploration_weight = exploration_weight
+
+    
+
+
+    
 
     def uct(self, n):
         "Upper confidence bound trees"
@@ -56,7 +77,6 @@ class MCTS:
         # sell
         elif node.buy_or_sell == 1:
             pred_prob = xgb_model_bid.predict_proba(test) # pridict up
-
 
         return pred_prob[0]
     
@@ -131,9 +151,7 @@ class MCTS:
         if k in self.children:
             # print(k)
             strin += "|----" * level
-            # strin += str(self.N[k])+ ' ' + str(self.Q[k])
-            strin += str(self.N[k])+ ' ' + str(self.uct(k)) + ' ' + str(self.Q[k])
-
+            strin += str(self.N[k])+ ' ' + str(self.uct(k))  + ' ' + str(self.Q[k]) + ' ' + str(self.P[k])
             print(strin)
             keys= self.children[k]
             level += 1
