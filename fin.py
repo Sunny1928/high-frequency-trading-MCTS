@@ -6,12 +6,12 @@ from tqdm import tqdm, trange
 
 
 
-_FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest")
+_FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest transacted")
 
-FILE_NAME = './2330/20221230.csv'
+FILE_NAME = './testing/2303.csv'
 ROLLOUT_TIMES = 10
-END_TICK = 10 # simulation until END_TICK
-TICK_PRICE_GAP = 0.5
+END_TICK = 1 # simulation until END_TICK
+TICK_PRICE_GAP = 0.05
 
 
 ORIGINAL_INVEST = 10000
@@ -150,13 +150,19 @@ class FinBoard(_FB, Node):
         # bidask [mP,mQ,bP1,bP2...bQ1,bQ2...,aP1,aP2...aQ1,aQ2...]
         #          0  1  2         7          12        17       22
 
+        
+
         allbidask = list(self.allbidask)
         bidask = list(self.bidask)
         now_invest = list(self.now_invest)
         buy_or_sell = self.buy_or_sell
+
+        # print(bidask[2])
+        # print(bidask[12])
         
         # gap between aP1 and bP1
         gap = (bidask[12]-bidask[2])/TICK_PRICE_GAP
+        # print(gap)
 
         if gap == 1.0: # gap = 1 tick
 
@@ -183,6 +189,10 @@ class FinBoard(_FB, Node):
             # match at ask3
             elif bidask[0] == bidask[12] + 2*TICK_PRICE_GAP: 
                 index = 5
+            
+            else:
+                return FinBoard(tuple(allbidask), tuple(bidask), END_TICK, True, buy_or_sell, tuple(now_invest), transacted=-1)
+
                 
 
             rand = round(random.random(), 4)
@@ -277,6 +287,9 @@ class FinBoard(_FB, Node):
             elif bidask[0] == bidask[12] + TICK_PRICE_GAP: 
                 index = 4
 
+            else:
+                return FinBoard(tuple(allbidask), tuple(bidask), END_TICK, True, buy_or_sell, tuple(now_invest), transacted=-1)
+
 
             rand = round(random.random(), 4)
             rand_next_price = round(random.random(), 4)
@@ -357,8 +370,8 @@ class FinBoard(_FB, Node):
         
         # is it terminal
         is_terminal = tick is END_TICK
-        
-        return FinBoard(tuple(allbidask), tuple(bidask), tick, is_terminal, buy_or_sell, tuple(now_invest))
+
+        return FinBoard(tuple(allbidask), tuple(bidask), tick, is_terminal, buy_or_sell, tuple(now_invest), transacted)
     
 
 
@@ -495,11 +508,13 @@ def play_game():
 
         now_bidask = tuple(stock_data[index])
 
-        board = new_fin_board(now_bidask, tick=0, buy_or_sell=buy_or_sell, now_invest=now_invest)
+        board = new_fin_board(now_bidask, tick=0, buy_or_sell=buy_or_sell, now_invest=now_invest, transacted=-1)
         for _ in range(ROLLOUT_TIMES):
             tree.do_rollout(board)
             
         # tree._print_tree_children(board)
+
+        
 
         if index == len(stock_data)-1:
             money = now_invest[0]+now_invest[1]*now_bidask[0]
@@ -526,21 +541,22 @@ def play_game():
                 buy_or_sell = 0
 
         # print(now_invest)
-        loop.set_description(f"[{index}/{all_len}], capital: {now_invest[0]} , stock: {now_invest[1]}")
+        # choose 0: transcated, 1: not transcated
+        loop.set_description(f"[{index}/{all_len}], capital: {now_invest[0]} , stock: {now_invest[1]}, choose: {children_index}")
         loop.update
         
 
 
         
 
-def new_fin_board(now_bidask, tick, buy_or_sell, now_invest):
+def new_fin_board(now_bidask, tick, buy_or_sell, now_invest, transacted):
     
     # 紀錄所有可能發生的買賣五檔數量
     allbidask = (now_bidask[0],)+(0,)*40
     allbidask = update_all_bidask(allbidask, now_bidask)
     
     # allbidask=所有的買賣五檔, bidask=現在的買賣五檔, tick=現在的tick量, terminal=結束, buy_or_sell=買或是賣, now_invest=現在的投資價格
-    return FinBoard(allbidask=allbidask, bidask=now_bidask, tick=tick, terminal=False, buy_or_sell=buy_or_sell, now_invest=tuple(now_invest))
+    return FinBoard(allbidask=allbidask, bidask=now_bidask, tick=tick, terminal=False, buy_or_sell=buy_or_sell, now_invest=tuple(now_invest), transacted=transacted)
 
 if __name__ == "__main__":
     play_game()
