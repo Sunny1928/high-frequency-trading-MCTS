@@ -10,7 +10,7 @@ _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_inv
 
 FILE_NAME = './testing/2303.csv'
 ROLLOUT_TIMES = 10
-END_TICK = 1 # simulation until END_TICK
+END_TICK = 5 # simulation until END_TICK
 TICK_PRICE_GAP = 0.05
 
 
@@ -512,7 +512,7 @@ def play_game():
         for _ in range(ROLLOUT_TIMES):
             tree.do_rollout(board)
             
-        # tree._print_tree_children(board)
+        tree._print_tree_children(board)
 
         
 
