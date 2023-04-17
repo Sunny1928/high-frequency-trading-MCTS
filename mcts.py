@@ -7,8 +7,8 @@ import numpy as np
 # model
 xgb_model_ask = xgb.XGBClassifier()
 xgb_model_bid = xgb.XGBClassifier()      
-xgb_model_ask.load_model(r"C:\Users\yicheng\Desktop\model\xgb_best_TV1ask.model")
-xgb_model_bid.load_model(r"C:\Users\yicheng\Desktop\model\xgb_best_TV1bid.model")
+xgb_model_ask.load_model("../model_weight/xgb_best_TV1ask.model")
+xgb_model_bid.load_model("../model_weight/xgb_best_TV1bid.model")
 
 class MCTS:
     "Monte Carlo tree searcher. First rollout the tree then choose a move."
