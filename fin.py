@@ -3,15 +3,18 @@ import random
 from mcts import MCTS, Node
 import pandas as pd
 from tqdm import tqdm, trange
-
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.dates as mdates
+from datetime import datetime
 
 
 _FB = namedtuple("FinBoard", "allbidask bidask tick terminal buy_or_sell now_invest transacted")
 
-FILE_NAME = './testing/2303.csv'
+FILE_NAME = './simulate/2308/20220902.csv'
 ROLLOUT_TIMES = 10
 END_TICK = 5 # simulation until END_TICK
-TICK_PRICE_GAP = 0.05
+TICK_PRICE_GAP = 0.5
 
 
 ORIGINAL_INVEST = 10000
@@ -489,6 +492,15 @@ def match_price_down(move, bidask, now_invest, buy_or_sell):
 def play_game():
     # read file
     stock_data = pd.read_csv(FILE_NAME)
+    match_date = stock_data['matchDate']
+    match_time = stock_data['matchTime']
+    time = []
+    for i in range(len(match_time)):
+        d = str(match_date[i])qqq
+        t = '%09d' % match_time[i]
+        # print(d[:4], d[4:6], d[6:], t[:2], t[2:4])
+        time.append(datetime(int(d[:4]), int(d[4:6]), int(d[6:]), int(t[:2]), int(t[2:4]), int(t[4:6])))
+    match_price = stock_data['matchPri']
     stock_data = stock_data.drop(columns=['openPri','matchTime','matchDate', 'symbol', 'tolMatchQty','highPri','lowPri','refPri','upPri','dnPri','label'])
     stock_data = stock_data.to_records(index=False)
 
@@ -496,10 +508,13 @@ def play_game():
     buy_or_sell = 0 # buy: 0, sell: 1
     now_invest=[ORIGINAL_INVEST, 0]# the now_invest u want to start with
 
+    # all_len = 50
     all_len = len(stock_data)
-    loop = tqdm(range(start_index, all_len))
+    loop = tqdm(range(start_index, all_len), position=0, leave=True)
 
-
+    capital = []
+    buy_price = []
+    sell_price = []
 
     for index in loop:
         # print("index: "+str(index))
@@ -512,11 +527,12 @@ def play_game():
         for _ in range(ROLLOUT_TIMES):
             tree.do_rollout(board)
             
-        tree._print_tree_children(board)
+        # tree._print_tree_children(board)
 
         
 
-        if index == len(stock_data)-1:
+        # if index == len(stock_data)-1:
+        if index == all_len-1:
             money = now_invest[0]+now_invest[1]*now_bidask[0]
             print("FILE_NAME: " + str(FILE_NAME))
             print("ROLLOUT_TIMES: " + str(ROLLOUT_TIMES))
@@ -529,21 +545,56 @@ def play_game():
         # make move, buy or sell
         next_bidask = tuple(stock_data[index+1])
 
+        money = now_invest[0]+now_invest[1]*now_bidask[0]
+        capital.append(money)
+
         if children_index == 0: # make move
             if buy_or_sell == 0 and next_bidask[0] == now_bidask[0]-TICK_PRICE_GAP: # buy
+                buy_price.append(money)
+                sell_price.append(np.nan)
+
                 now_invest[1] = now_invest[0]/(next_bidask[0])
                 now_invest[0] = 0
                 buy_or_sell = 1
             
+            
             elif buy_or_sell == 1 and next_bidask[0] == now_bidask[0]+TICK_PRICE_GAP: # sell
+                sell_price.append(money)
+                buy_price.append(np.nan)
+
                 now_invest[0] = now_invest[1]*(next_bidask[0])
                 now_invest[1] = 0
                 buy_or_sell = 0
 
+            else:
+                buy_price.append(np.nan)
+                sell_price.append(np.nan)
+        else:
+            buy_price.append(np.nan)
+            sell_price.append(np.nan)
+
         # print(now_invest)
         # choose 0: transcated, 1: not transcated
+        
+
         loop.set_description(f"[{index}/{all_len}], capital: {now_invest[0]} , stock: {now_invest[1]}, choose: {children_index}")
         loop.update
+
+    myFmt = mdates.DateFormatter('%H:%M')
+    ax1 = plt.subplot2grid((8,1), (0,0), rowspan = 5, colspan = 1)
+    ax2 = ax1.twinx()
+    ax2.plot(time[:all_len-1], match_price[:all_len-1], color = 'orange', linewidth = 1, label = 'Match Price')
+
+    ax1.plot(time[:all_len-1], capital, color = 'skyblue', linewidth = 3, label = 'Return')
+    ax1.plot(time[:all_len-1], buy_price, marker = '^', color = 'green', markersize = 5, label = 'BUY SIGNAL', linewidth = 0)
+    ax1.plot(time[:all_len-1], sell_price, marker = 'v', color = 'r', markersize = 5, label = 'SELL SIGNAL', linewidth = 0)
+    
+    ax1.xaxis.set_major_formatter(myFmt)
+    ax1.legend()
+    ax1.set_title('Capital')
+    plt.legend(loc = 'lower right')
+    plt.show()
+    plt.savefig("plot.png")
         
 
 

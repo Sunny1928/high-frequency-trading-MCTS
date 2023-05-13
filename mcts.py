@@ -7,8 +7,8 @@ import numpy as np
 # model
 xgb_model_ask = xgb.XGBClassifier()
 xgb_model_bid = xgb.XGBClassifier()      
-xgb_model_ask.load_model("../model_weight/xgb_best_TV1ask.model")
-xgb_model_bid.load_model("../model_weight/xgb_best_TV1bid.model")
+xgb_model_ask.load_model("./model_weight/ask_using.model")
+xgb_model_bid.load_model("./model_weight/bid_using.model")
 
 class MCTS:
     "Monte Carlo tree searcher. First rollout the tree then choose a move."
@@ -137,7 +137,7 @@ class MCTS:
             # print(k)
             strin += "|----" * level
             strin += str(self.N[k])+ ' ' + str(self.uct(k))  + ' ' + str(self.Q[k]) + ' ' + str(self.P[k])
-            print(strin)
+            # print(strin)
             keys= self.children[k]
             level += 1
             for i in keys:
